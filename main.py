@@ -1100,20 +1100,19 @@ class Board:
     def load_pieces(self):
         global square_dim
         global piece_size
-        base_path = "E:\\Documents\\Projectos\\Python\\chess-engine"
         images = {
-            "P": pygame.image.load(str(base_path + "\\res\\wp.png")),
-            "R": pygame.image.load(str(base_path + "\\res\\wr.png")),
-            "N": pygame.image.load(str(base_path + "\\res\\wn.png")),
-            "B": pygame.image.load(str(base_path + "\\res\\wb.png")),
-            "Q": pygame.image.load(str(base_path + "\\res\\wq.png")),
-            "K": pygame.image.load(str(base_path + "\\res\\wk.png")),
-            "p": pygame.image.load(str(base_path + "\\res\\p.png")),
-            "r": pygame.image.load(str(base_path + "\\res\\r.png")),
-            "n": pygame.image.load(str(base_path + "\\res\\n.png")),
-            "b": pygame.image.load(str(base_path + "\\res\\b.png")),
-            "q": pygame.image.load(str(base_path + "\\res\\q.png")),
-            "k": pygame.image.load(str(base_path + "\\res\\k.png")),
+            "P": pygame.image.load("/res/wp.png"),
+            "R": pygame.image.load("/res/wr.png"),
+            "N": pygame.image.load("/res/wn.png"),
+            "B": pygame.image.load("/res/wb.png"),
+            "Q": pygame.image.load("/res/wq.png"),
+            "K": pygame.image.load("/res/wk.png"),
+            "p": pygame.image.load("/res/p.png"),
+            "r": pygame.image.load("/res/r.png"),
+            "n": pygame.image.load("/res/n.png"),
+            "b": pygame.image.load("/res/b.png"),
+            "q": pygame.image.load("/res/q.png"),
+            "k": pygame.image.load("/res/k.png"),
         }
         for idx, val in images.items():
             key: pygame.surface.Surface = pygame.transform.scale(
