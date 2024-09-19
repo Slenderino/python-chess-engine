@@ -1,5 +1,7 @@
 import subprocess
 import sys
+import random
+import time
 
 try:
     import tkinter as tk
@@ -116,7 +118,10 @@ def new_board_thread():
         first = False
         new_board_thread()
         return
-    thread = threading.Thread(target=call_board)
+    try:
+        thread = threading.Thread(target=call_board)
+    except Exception as e:
+        print(e)
     thread.start()
     pack_board_buttons()
 
@@ -176,472 +181,80 @@ QUEENV = 90
 KINGV = 200
 
 PAWN_PST = [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    10,
-    10,
-    20,
-    30,
-    30,
-    20,
-    10,
-    10,
-    5,
-    5,
-    10,
-    25,
-    25,
-    10,
-    5,
-    5,
-    0,
-    0,
-    0,
-    20,
-    20,
-    0,
-    0,
-    0,
-    5,
-    -5,
-    -10,
-    0,
-    0,
-    -10,
-    -5,
-    5,
-    5,
-    10,
-    10,
-    -20,
-    -20,
-    10,
-    10,
-    5,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
+     0,  0,   0,   0,   0,   0,  0,  0,
+    50, 50,  50,  50,  50,  50, 50, 50,
+    10, 10,  20,  30,  30,  20, 10, 10,
+     5,  5,  10,  25,  25,  10,  5,  5,
+     0,  0,   0,  25,  25,   0,  0,  0,
+     5, -5, -10,   0,   0, -10, -5,  5,
+     5, 10,  10, -30, -30,  10, 10,  5,
+     0,  0,   0,   0,   0,   0,  0,  0,
 ]
 
 KNIGHT_PST = [
-    -50,
-    -40,
-    -30,
-    -30,
-    -30,
-    -30,
-    -40,
-    -50,
-    -40,
-    -20,
-    0,
-    0,
-    0,
-    0,
-    -20,
-    -40,
-    -30,
-    0,
-    10,
-    15,
-    15,
-    10,
-    0,
-    -30,
-    -30,
-    5,
-    15,
-    20,
-    20,
-    15,
-    5,
-    -30,
-    -30,
-    0,
-    15,
-    20,
-    20,
-    15,
-    0,
-    -30,
-    -30,
-    5,
-    10,
-    15,
-    15,
-    10,
-    5,
-    -30,
-    -40,
-    -20,
-    0,
-    5,
-    5,
-    0,
-    -20,
-    -40,
-    -50,
-    -40,
-    -30,
-    -30,
-    -30,
-    -30,
-    -40,
-    -50,
+    -50, -40, -30, -30, -30, -30, -40, -50,
+    -40, -20,   0,   0,   0,   0, -20, -40,
+    -30,   0,  10,  15,  15,  10,   0, -30,
+    -30,   5,  15,  20,  20,  15,   5, -30,
+    -30,   0,  15,  20,  20,  15,   0, -30,
+    -30,   5,  10,  15,  15,  10,   5, -30,
+    -40, -20,   0,   5,   5,   0, -20, -40,
+    -50, -40, -30, -30, -30, -30, -40, -50,
 ]
 
 BISHOP_PST = [
-    -20,
-    -10,
-    -10,
-    -10,
-    -10,
-    -10,
-    -10,
-    -20,
-    -10,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    -10,
-    -10,
-    0,
-    5,
-    10,
-    10,
-    5,
-    0,
-    -10,
-    -10,
-    5,
-    5,
-    10,
-    10,
-    5,
-    5,
-    -10,
-    -10,
-    0,
-    10,
-    10,
-    10,
-    10,
-    0,
-    -10,
-    -10,
-    10,
-    10,
-    10,
-    10,
-    10,
-    10,
-    -10,
-    -10,
-    5,
-    0,
-    0,
-    0,
-    0,
-    5,
-    -10,
-    -20,
-    -10,
-    -10,
-    -10,
-    -10,
-    -10,
-    -10,
-    -20,
+    -20, -10, -10, -10, -10, -10, -10, -20,
+    -10,   0,   0,   0,   0,   0,   0, -10,
+    -10,   0,   5,  10,  10,   5,   0, -10,
+    -10,   5,   5,  10,  10,   5,   5, -10,
+    -10,   0,  10,  10,  10,  10,   0, -10,
+    -10,  10,  10,  10,  10,  10,  10, -10,
+    -10,   5,   0,   0,   0,   0,   5, -10,
+    -20, -10, -10, -10, -10, -10, -10, -20,
 ]
 
 ROOK_PST = [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    5,
-    10,
-    10,
-    10,
-    10,
-    10,
-    10,
-    5,
-    -5,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    -5,
-    -5,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    -5,
-    -5,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    -5,
-    -5,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    -5,
-    -5,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    -5,
-    0,
-    0,
-    0,
-    5,
-    5,
-    0,
-    0,
-    0,
+     0,  0,  0,  0,  0,  0,  0,  0,
+     5, 10, 10, 10, 10, 10, 10,  5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+     0,  0,  0,  5,  5,  0,  0,  0,
 ]
 
 QUEEN_PST = [
-    -20,
-    -10,
-    -10,
-    -5,
-    -5,
-    -10,
-    -10,
-    -20,
-    -10,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    -10,
-    -10,
-    0,
-    5,
-    5,
-    5,
-    5,
-    0,
-    -10,
-    -5,
-    0,
-    5,
-    5,
-    5,
-    5,
-    0,
-    -5,
-    0,
-    0,
-    5,
-    5,
-    5,
-    5,
-    0,
-    -5,
-    -10,
-    5,
-    5,
-    5,
-    5,
-    5,
-    0,
-    -10,
-    -10,
-    0,
-    5,
-    0,
-    0,
-    0,
-    0,
-    -10,
-    -20,
-    -10,
-    -10,
-    -5,
-    -5,
-    -10,
-    -10,
-    -20,
+    -20, -10, -10, -5, -5, -10, -10, -20,
+    -10,   0,   0,  0,  0,   0,   0, -10,
+    -10,   0,   5,  5,  5,   5,   0, -10,
+    -5,    0,   5,  5,  5,   5,   0, -5,
+     0,    0,   5,  5,  5,   5,   0, -5,
+    -10,   5,   5,  5,  5,   5,   0, -10,
+    -10,   0,   5,  0,  0,   0,   0, -10,
+    -20, -10, -10, -5, -5, -10, -10, -20,
 ]
 
 KING_MG_PST = [
-    -30,
-    -40,
-    -40,
-    -50,
-    -50,
-    -40,
-    -40,
-    -30,
-    -30,
-    -40,
-    -40,
-    -50,
-    -50,
-    -40,
-    -40,
-    -30,
-    -30,
-    -40,
-    -40,
-    -50,
-    -50,
-    -40,
-    -40,
-    -30,
-    -30,
-    -40,
-    -40,
-    -50,
-    -50,
-    -40,
-    -40,
-    -30,
-    -20,
-    -30,
-    -30,
-    -40,
-    -40,
-    -30,
-    -30,
-    -20,
-    -10,
-    -20,
-    -20,
-    -20,
-    -20,
-    -20,
-    -20,
-    -10,
-    20,
-    20,
-    0,
-    0,
-    0,
-    0,
-    20,
-    20,
-    20,
-    30,
-    10,
-    0,
-    0,
-    10,
-    30,
-    20,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -20, -30, -30, -40, -40, -30, -30, -20,
+    -10, -20, -20, -20, -20, -20, -20, -10,
+     20,  20,   0,   0,   0,   0,  20,  20,
+     20,  30,  10,   0,   0,  10,  30,  20,
 ]
 
 KING_EG_PST = [
-    -50,
-    -40,
-    -30,
-    -20,
-    -20,
-    -30,
-    -40,
-    -50,
-    -30,
-    -20,
-    -10,
-    0,
-    0,
-    -10,
-    -20,
-    -30,
-    -30,
-    -10,
-    20,
-    30,
-    30,
-    20,
-    -10,
-    -30,
-    -30,
-    -10,
-    30,
-    40,
-    40,
-    30,
-    -10,
-    -30,
-    -30,
-    -10,
-    30,
-    40,
-    40,
-    30,
-    -10,
-    -30,
-    -30,
-    -10,
-    20,
-    30,
-    30,
-    20,
-    -10,
-    -30,
-    -30,
-    -30,
-    0,
-    0,
-    0,
-    0,
-    -30,
-    -30,
-    -50,
-    -30,
-    -30,
-    -30,
-    -30,
-    -30,
-    -30,
-    -50,
+    -50, -40, -30, -20, -20, -30, -40, -50,
+    -30, -20, -10,   0,   0, -10, -20, -30,
+    -30, -10,  20,  30,  30,  20, -10, -30,
+    -30, -10,  30,  40,  40,  30, -10, -30,
+    -30, -10,  30,  40,  40,  30, -10, -30,
+    -30, -10,  20,  30,  30,  20, -10, -30,
+    -30, -30,   0,   0,   0,   0, -30, -30,
+    -50, -30, -30, -30, -30, -30, -30, -50,
 ]
 
 IA_PLAYS_AS = chess.BLACK
@@ -653,61 +266,62 @@ def invert_pst(pst):
     inverted = matrix_invertida.flatten().tolist()
     return inverted
 
+POSITIONAL_INFLUENCE: float = 0.3
 
 def evaluate_piece(piece, square, endgame=False, pst=True):
     if piece.color == chess.BLACK:
         if piece.piece_type == chess.PAWN:
             if pst:
-                return PAWN_PST[square] + PAWNV
+                return PAWN_PST[square] * POSITIONAL_INFLUENCE + PAWNV
             return PAWNV
         elif piece.piece_type == chess.KNIGHT:
             if pst:
-                return KNIGHT_PST[square] + KNIGHTV
+                return KNIGHT_PST[square] * POSITIONAL_INFLUENCE + KNIGHTV
             return KNIGHTV
         elif piece.piece_type == chess.BISHOP:
             if pst:
-                return BISHOP_PST[square] + BISHOPV
+                return BISHOP_PST[square] * POSITIONAL_INFLUENCE + BISHOPV
             return BISHOPV
         elif piece.piece_type == chess.ROOK:
             if pst:
-                return ROOK_PST[square] + ROOKV
+                return ROOK_PST[square] * POSITIONAL_INFLUENCE + ROOKV
             return ROOKV
         elif piece.piece_type == chess.QUEEN:
             if pst:
-                return QUEEN_PST[square] + QUEENV
+                return QUEEN_PST[square] * POSITIONAL_INFLUENCE + QUEENV
             return QUEENV
         elif piece.piece_type == chess.KING:
             if pst:
                 if endgame:
-                    return KING_EG_PST[square] + KINGV
-                return KING_MG_PST[square] + KINGV
+                    return KING_EG_PST[square] * POSITIONAL_INFLUENCE + KINGV
+                return KING_MG_PST[square] * POSITIONAL_INFLUENCE + KINGV
             return 0
     else:
         if piece.piece_type == chess.PAWN:
             if pst:
-                return invert_pst(PAWN_PST)[square] + PAWNV
+                return invert_pst(PAWN_PST)[square] * POSITIONAL_INFLUENCE + PAWNV
             return PAWNV
         elif piece.piece_type == chess.KNIGHT:
             if pst:
-                return invert_pst(KNIGHT_PST)[square] + KNIGHTV
+                return invert_pst(KNIGHT_PST)[square] * POSITIONAL_INFLUENCE + KNIGHTV
             return KNIGHTV
         elif piece.piece_type == chess.BISHOP:
             if pst:
-                return invert_pst(BISHOP_PST)[square] + BISHOPV
+                return invert_pst(BISHOP_PST)[square] * POSITIONAL_INFLUENCE + BISHOPV
             return BISHOPV
         elif piece.piece_type == chess.ROOK:
             if pst:
-                return invert_pst(ROOK_PST)[square] + ROOKV
+                return invert_pst(ROOK_PST)[square] * POSITIONAL_INFLUENCE + ROOKV
             return ROOKV
         elif piece.piece_type == chess.QUEEN:
             if pst:
-                return invert_pst(QUEEN_PST)[square] + QUEENV
+                return invert_pst(QUEEN_PST)[square] * POSITIONAL_INFLUENCE + QUEENV
             return QUEENV
         elif piece.piece_type == chess.KING:
             if pst:
                 if endgame:
-                    return invert_pst(KING_EG_PST)[square] + KINGV
-                return invert_pst(KING_MG_PST)[square] + KINGV
+                    return invert_pst(KING_EG_PST)[square] * POSITIONAL_INFLUENCE + KINGV
+                return invert_pst(KING_MG_PST)[square] * POSITIONAL_INFLUENCE + KINGV
             return 0
 
 
@@ -715,9 +329,9 @@ def evaluate(board: chess.Board, log=False) -> float:
     global white_turn
     if board.is_checkmate():
         if white_turn:
-            return -1000
-        else:
             return 1000
+        else:
+            return -1000
     if (
         board.is_fifty_moves()
         or board.is_fivefold_repetition()
@@ -774,6 +388,12 @@ def color_material(color: bool, board: chess.Board) -> int:
 def minimax(
     position: chess.Board, depth: int, alpha: float, beta: float, white_turn: bool
 ):
+    temp = chess.Board()
+    temp.push_san('e4')
+    temp.push_san('e5')
+    temp.push_san('Nf3')
+    temp.push_san('Nc6')
+    if position == temp and random.randint(0, 1) == 0: return 0, 'b8c6'
     if depth == 0 or position.is_game_over():
         return evaluate(position), None
 
@@ -853,18 +473,18 @@ class Board:
 
         # Funciones auxiliares para el dibujo y manejo del tablero
         def render_text(
-            content: str,
-            font: str,
-            size: int,
-            color,
-            surface,
-            bold=False,
-            italic=False,
-            antialias=False,
-            center_x=0,
-            center_y=0,
-            x=0,
-            y=0,
+                content: str,
+                font: str,
+                size: int,
+                color,
+                surface,
+                bold=False,
+                italic=False,
+                antialias=False,
+                center_x=0,
+                center_y=0,
+                x=0,
+                y=0,
         ):
             font = pygame.font.SysFont(font, size, bold)
             text = font.render(content, True, color)
@@ -906,6 +526,7 @@ class Board:
                 raise EngineError("Width does not equal Height")
 
         # Lógica principal del juego
+        now = time.time()
         start = None
         end = None
         white_turn = True
@@ -928,8 +549,8 @@ class Board:
                         end = selected_square
                     else:
                         start_square = (
-                            self.san_idx(selected_square)[0]
-                            + self.san_idx(selected_square)[1] * 8
+                                self.san_idx(selected_square)[0]
+                                + self.san_idx(selected_square)[1] * 8
                         )
                         old = current_board
                         # current_board = ('\n'.join(str(current_board).strip().split('\n')[::-1]))
@@ -953,19 +574,19 @@ class Board:
                                 if not white_turn:
                                     os.system("cls")
                                     promotion = ""
-                                    # print(start[1], end=", ")
-                                    # print(end[1])
+                                    print(start[1], end=", ")
+                                    print(end[1])
                                     if self.position_to_representation(current_board)[
                                         (
-                                            self.san_idx(start)[0]
-                                            + self.san_idx(start)[1] * 8
+                                                self.san_idx(start)[0]
+                                                + self.san_idx(start)[1] * 8
                                         )
                                     ].lower() == "p" and (
-                                        start[1],
-                                        end[1] == 7,
-                                        8 or start[1],
-                                        end[1] == 2,
-                                        1,
+                                            start[1],
+                                            end[1] == 7,
+                                            8 or start[1],
+                                            end[1] == 2,
+                                            1,
                                     ):
                                         print("tried promotion")
                                         promotion = input(
@@ -977,20 +598,24 @@ class Board:
                                     ai_highlight = ((-1, -1), (-1, -1))
                                     print(f"AI evaluation: {evaluate(current_board)}")
                                     next = 2
+                                    now = time.time()
                             else:
                                 if white_turn:
                                     os.system("cls")
                                     promotion = ""
                                     # print(start[1], end=", ")
                                     # print(end[1])
+                                    # print(self.position_to_representation(current_board)[self.san_idx(start)[0] + self.san_idx(start)[1]*8].lower())
+                                    # print(start[1] == '7', end[1])
+                                    # print(self.position_to_representation(current_board))
                                     if self.position_to_representation(current_board)[
                                         (
-                                            self.san_idx(start)[0]
-                                            + self.san_idx(start)[1] * 8
+                                                self.san_idx(start)[0]
+                                                + self.san_idx(start)[1] * 8
                                         )
                                     ].lower() == "p" and (
-                                        (start[1] == 7 and end[1] == 8)
-                                        or (start[1] == 2 and end[1] == 1)
+                                            (start[1] == '7' and end[1] == '8')
+                                            or (start[1] == 2 and end[1] == 1)
                                     ):
                                         promotion = input(
                                             "You will promote a pawn, [q, r, b, n]"
@@ -1001,12 +626,14 @@ class Board:
                                     ai_highlight = ((-1, -1), (-1, -1))
                                     print(f"AI evaluation: {evaluate(current_board)}")
                                     next = 2
+                                    now = time.time()
                         except chess.IllegalMoveError:
                             print(f"Move {str(str(start) + str(end))} is illegal")
                         finally:
                             ...
                             # print(f'send move: {str(str(start) + str(end))}')
 
+            pygame.display.set_caption(current_board.fen())
             screen.fill("purple")
             highlight.fill((0, 0, 0, 0))
             holding_piece.fill((0, 0, 0, 0))
@@ -1059,6 +686,8 @@ class Board:
                 )
             screen.blit(highlight, (0, 0))
             self.draw_position(current_board)
+            if holding == '.':
+                holding = None
             if holding:
                 images = self.load_pieces()
                 images[holding].set_alpha(128)
@@ -1090,6 +719,8 @@ class Board:
                 ai_uci = None
                 current_board = chess.Board
                 white_turn = True
+
+            render_text(str(time.time() - now), 'Consolas', 34, 'green', screen)
 
             fps = clock.tick(FPS)
             pygame.display.flip()
@@ -1169,6 +800,7 @@ class Board:
                 )
                 if isinstance(val, int):
                     print("Checkmate")
+                    self.reset_by_checkmate()
                     self.load_position(chess.Board())
                 if not isinstance(val, int):
                     self.make_move(val[1])
@@ -1181,6 +813,7 @@ class Board:
                 )
                 if isinstance(val, int):
                     print("Checkmate")
+                    self.reset_by_checkmate()
                     self.load_position(chess.Board())
                 if not isinstance(val, int):
                     self.make_move(val[1])
@@ -1205,6 +838,9 @@ class Board:
             current_board.push_uci(str(move))
         else:
             print("Checkmate")
+            self.reset_by_checkmate()
+            self.load_position(chess.Board())
+
 
     def highlight_mouse_square(self):
         global top_lefts
@@ -1257,6 +893,9 @@ class Board:
     def set_depth(self, val):
         global depth
         depth = val
+
+    def reset_by_checkmate(self):
+        ...
 
 
 # Iniciar la aplicación
