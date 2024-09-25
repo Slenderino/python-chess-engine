@@ -120,8 +120,8 @@ def new_board_thread():
         return
     try:
         thread = threading.Thread(target=call_board)
-    except Exception as e:
-        print(e)
+    except Exception as err:
+        print(err)
     thread.start()
     pack_board_buttons()
 
@@ -130,7 +130,7 @@ def load_def_position():
     def_position = chess.Board()
     # def_position.set_board_fen('rnbqk3/pppp1pPp/8/8/8/8/PPPPPP1P/RNBQKBNR')
     # def_position.push_uci('g7g8q')
-    board.load_position(def_position)
+    load_position(def_position)
 
 
 def pack_board_buttons():
@@ -144,11 +144,11 @@ size_variable = tk.DoubleVar(value=1.15)
 
 
 def apply_size():
-    board.change_piece_size(float(change_piece_size_entry.get()))
+    change_piece_size(float(change_piece_size_entry.get()))
 
 
 def undo_move():
-    board.undo_move()
+    undo_move()
 
 
 # Botones de la interfaz
@@ -185,7 +185,7 @@ PAWN_PST = [
     50, 50,  50,  50,  50,  50, 50, 50,
     10, 10,  20,  30,  30,  20, 10, 10,
      5,  5,  10,  25,  25,  10,  5,  5,
-     0,  0,   0,  25,  25,   0,  0,  0,
+     0,  0,   0,  20,  20,   0,  0,  0,
      5, -5, -10,   0,   0, -10, -5,  5,
      5, 10,  10, -30, -30,  10, 10,  5,
      0,  0,   0,   0,   0,   0,  0,  0,
@@ -266,7 +266,7 @@ def invert_pst(pst):
     inverted = matrix_invertida.flatten().tolist()
     return inverted
 
-POSITIONAL_INFLUENCE: float = 0.3
+POSITIONAL_INFLUENCE: float = 0.2
 
 def evaluate_piece(piece, square, endgame=False, pst=True):
     if piece.color == chess.BLACK:
@@ -325,32 +325,30 @@ def evaluate_piece(piece, square, endgame=False, pst=True):
             return 0
 
 
-def evaluate(board: chess.Board, log=False) -> float:
+def evaluate(position: chess.Board, log=False) -> float:
     global white_turn
-    if board.is_checkmate():
-        if white_turn:
-            return 1000
-        else:
-            return -1000
+    if position.is_checkmate():
+        if position.is_attacked_by(chess.BLACK, position.king(chess.WHITE)): return -1000
+        return 1000
     if (
-        board.is_fifty_moves()
-        or board.is_fivefold_repetition()
-        or board.is_insufficient_material()
-        or board.is_repetition()
-        or board.is_stalemate()
-        or board.is_seventyfive_moves()
+        position.is_fifty_moves()
+        or position.is_fivefold_repetition()
+        or position.is_insufficient_material()
+        or position.is_repetition()
+        or position.is_stalemate()
+        or position.is_seventyfive_moves()
     ):
         return 0
 
     total_material = evaluate_by_material(
-        board, chess.WHITE, False, False
-    ) + evaluate_by_material(board, chess.BLACK, False, False)
+        position, chess.WHITE, False, False
+    ) + evaluate_by_material(position, chess.BLACK, False, False)
     endgame = total_material < 300
     if log:
         print(total_material)
 
-    score = evaluate_by_material(board, chess.WHITE, endgame)
-    score -= evaluate_by_material(board, chess.BLACK, endgame)
+    score = evaluate_by_material(position, chess.WHITE, endgame)
+    score -= evaluate_by_material(position, chess.BLACK, endgame)
     return score
 
 
@@ -363,10 +361,10 @@ def squareset_to_quantity(squareset: chess.SquareSet) -> int:
     return squareset
 
 
-def evaluate_by_material(board: chess.Board, color: bool, endgame=False, pst=True):
+def evaluate_by_material(position: chess.Board, color: bool, endgame=False, pst=True):
     score = 0
     for square in chess.SQUARES:
-        piece = board.piece_at(square)
+        piece = position.piece_at(square)
         if piece:
             value = evaluate_piece(piece, square, endgame, pst)
             if color == piece.color:
@@ -374,19 +372,19 @@ def evaluate_by_material(board: chess.Board, color: bool, endgame=False, pst=Tru
     return score
 
 
-def color_material(color: bool, board: chess.Board) -> int:
+def color_material(color: bool, position: chess.Board) -> int:
     return (
-        squareset_to_quantity(board.pieces(chess.PAWN, color)) * PAWNV
-        + squareset_to_quantity(board.pieces(chess.KNIGHT, color)) * KNIGHTV
-        + squareset_to_quantity(board.pieces(chess.BISHOP, color)) * BISHOPV
-        + squareset_to_quantity(board.pieces(chess.ROOK, color)) * ROOKV
-        + squareset_to_quantity(board.pieces(chess.QUEEN, color)) * QUEENV
+            squareset_to_quantity(position.pieces(chess.PAWN, color)) * PAWNV
+            + squareset_to_quantity(position.pieces(chess.KNIGHT, color)) * KNIGHTV
+            + squareset_to_quantity(position.pieces(chess.BISHOP, color)) * BISHOPV
+            + squareset_to_quantity(position.pieces(chess.ROOK, color)) * ROOKV
+            + squareset_to_quantity(position.pieces(chess.QUEEN, color)) * QUEENV
     )
 
 
 # @cache
 def minimax(
-    position: chess.Board, depth: int, alpha: float, beta: float, white_turn: bool
+    position: chess.Board, profundity: int, alpha: float, beta: float, white_turn: bool
 ):
     temp = chess.Board()
     temp.push_san('e4')
@@ -394,7 +392,7 @@ def minimax(
     temp.push_san('Nf3')
     temp.push_san('Nc6')
     if position == temp and random.randint(0, 1) == 0: return 0, 'b8c6'
-    if depth == 0 or position.is_game_over():
+    if profundity == 0 or position.is_game_over():
         return evaluate(position), None
 
     best_move = None
@@ -404,7 +402,7 @@ def minimax(
         for move in position.legal_moves:
             position.push(move)  # Make the move
             val, _ = minimax(
-                position, depth - 1, alpha, beta, not white_turn
+                position, profundity - 1, alpha, beta, not white_turn
             )  # Evaluate move
             position.pop()  # Undo the move
 
@@ -421,7 +419,7 @@ def minimax(
         for move in position.legal_moves:
             position.push(move)  # Make the move
             val, _ = minimax(
-                position, depth - 1, alpha, beta, not white_turn
+                position, profundity - 1, alpha, beta, not white_turn
             )  # Evaluate move
             position.pop()  # Undo the move
 
@@ -436,56 +434,158 @@ def minimax(
     return best, best_move
 
 
+def get_top_lefts():
+    global top_lefts
+    top_lefts = []
+    i = -1
+    for rank in range(8):
+        for col in range(8):
+            i += 1
+            top_lefts.append(((i % 8 * square_dim), (i // 8 * square_dim)))
+    return top_lefts
+
+
+def set_depth(val):
+    global depth
+    depth = val
+
+
+def undo_move():
+    global current_board
+    global ai_highlight
+    current_board.pop()
+    current_board.pop()
+    ai_highlight = ((-1, -1), (-1, -1))
+
+
+def highlight_mouse_square():
+    global top_lefts
+    global square_dim
+    global screen
+    global highlight
+    get_top_lefts()
+    pos = pygame.mouse.get_pos()
+    if not (pos[0] > 0 and pos[1] > 0):
+        return
+    ix = int(pos[0] // square_dim)
+    iy = int(pos[1] // square_dim * 8)
+    x = top_lefts[ix][0]
+    y = top_lefts[iy][1]
+    pygame.draw.rect(
+        highlight,
+        (255, 0, 0, 100),
+        pygame.Rect((x, y), (square_dim + 1, square_dim + 1)),
+    )
+    iy = iy // 8
+    return ix, iy
+
+
+def change_piece_size(size):
+    global piece_size
+    global square_dim
+    piece_size = size * square_dim
+
+
+def load_position(pos):
+    global current_board
+    current_board = pos
+
+
+def position_to_representation(pos):
+    pos = str(pos)
+    pos = pos.replace(" ", "")
+    pos = pos.replace("\n", "")
+    return pos
+
+
+def load_pieces():
+    global square_dim
+    global piece_size
+    os.chdir(os.path.dirname(__file__))
+    images = {
+        "P": pygame.image.load("res/wp.png"),
+        "R": pygame.image.load("res/wr.png"),
+        "N": pygame.image.load("res/wn.png"),
+        "B": pygame.image.load("res/wb.png"),
+        "Q": pygame.image.load("res/wq.png"),
+        "K": pygame.image.load("res/wk.png"),
+        "p": pygame.image.load("res/p.png"),
+        "r": pygame.image.load("res/r.png"),
+        "n": pygame.image.load("res/n.png"),
+        "b": pygame.image.load("res/b.png"),
+        "q": pygame.image.load("res/q.png"),
+        "k": pygame.image.load("res/k.png"),
+    }
+    for idx, val in images.items():
+        key: pygame.surface.Surface = pygame.transform.scale(
+            val, (piece_size, piece_size)
+        )
+        images[idx] = key
+    return images
+
+
+def draw_position(position):
+    global square_dim
+    global screen
+    global piece_size
+    global top_lefts
+    position = position_to_representation(position)
+    imgs = load_pieces()
+    centers = []
+    top_lefts = []
+    i = -1
+    for rank in range(8):
+        for col in range(8):
+            i += 1
+            centers.append(
+                (
+                    (i % 8 * square_dim) + square_dim / 2,
+                    (i // 8 * square_dim) + square_dim / 2,
+                )
+            )
+            top_lefts.append(((i % 8 * square_dim), (i // 8 * square_dim)))
+    for ind, p in enumerate(position):
+        if p != ".":
+            img: pygame.surface.Surface = imgs[p]
+            screen.blit(
+                img,
+                (
+                    centers[ind][0] - piece_size / 2,
+                    centers[ind][1] - piece_size / 2,
+                ),
+            )
+
+
 class Board:
 
     def __init__(self):
-        global screen, selected_square, clock, WIDTH, HEIGHT, FPS, first, square_dim, current_board, piece_size, highlight, white_turn, ai_highlight, depth
+        global screen, selected_square, clock, WIDTH, HEIGHT, FPS, first, square_dim, current_board, piece_size, highlight, white_turn, ai_highlight, depth, tick, holding_piece
 
-        # Inicialización
-        pygame.init()
-        pygame.font.init()
-        tick = 0
+        # Initialize pygame
+        self.pygame_init()
 
         # Ancho y alto
         WIDTH, HEIGHT = 725, 725
 
-        square_dim = WIDTH / 8
-        piece_size = square_dim * 1.15
+        square_dim, piece_size = self.get_square_dim_and_piece_size()
 
         # Fps
         FPS = 60
 
+        # Create New Board
         empty_board = chess.Board.empty()
         current_board = empty_board
 
         # Ventana de Pygame
-        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SRCALPHA)
-        highlight = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        holding_piece = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        pygame.display.set_caption(
-            os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-        )
+        self.get_displays()
 
         # Reloj de Pygame
         clock = pygame.time.Clock()
 
-        running = True
+        self.running = True
 
         # Funciones auxiliares para el dibujo y manejo del tablero
-        def render_text(
-                content: str,
-                font: str,
-                size: int,
-                color,
-                surface,
-                bold=False,
-                italic=False,
-                antialias=False,
-                center_x=0,
-                center_y=0,
-                x=0,
-                y=0,
-        ):
+        def render_text(content: str, font: str, size: int, color, surface, bold=False, italic=False, antialias=False, center_x=0, center_y=0, x=0, y=0):
             font = pygame.font.SysFont(font, size, bold)
             text = font.render(content, True, color)
             if center_x:
@@ -526,72 +626,58 @@ class Board:
                 raise EngineError("Width does not equal Height")
 
         # Lógica principal del juego
-        now = time.time()
-        start = None
-        end = None
-        white_turn = True
-        start_highlight = None
-        next = -1
-        ai_highlight = ((-1, -1), (-1, -1))
-        move_highlight = ai_highlight
-        holding = None
+        end, holding, next, now, start, start_highlight = self.reset_variables()
         depth = 4
 
-        while running:
+        while self.running:
             for event in pygame.event.get():
+
                 if event.type == pygame.QUIT:
-                    running = False
+                    self.running = False
+
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    old = start
-                    start = selected_square
-                    if end == "Nan":
-                        start = old
-                        end = selected_square
-                    else:
-                        start_square = (
-                                self.san_idx(selected_square)[0]
-                                + self.san_idx(selected_square)[1] * 8
-                        )
-                        old = current_board
-                        # current_board = ('\n'.join(str(current_board).strip().split('\n')[::-1]))
-                        current_board = self.position_to_representation(current_board)
-                        if not current_board[start_square].islower():
-                            holding = str(current_board[start_square]).capitalize()
-                        else:
-                            holding = current_board[start_square].lower()
-                        images = self.load_pieces()
-                        current_board = old
-                    start_highlight = self.san_idx(start)
+
+                    old = start  # Save start
+                    start = selected_square  # Update start
+
+                    """
+                    if end == "Nan":  # If there's no end this must be the end (two click move)
+                        start = old; end = selected_square  # Backup start and assign end
+                    else:  # There's an end and therefore this is a new click
+                    """
+
+                    start_square = (self.san_idx(selected_square)[0] + self.san_idx(selected_square)[1] * 8)  # Assign start square as current square
+
+                    old = current_board  # Backup current_board
+                    current_board = position_to_representation(current_board)  # Get representation of current board
+
+                    holding = current_board[start_square]  # Set holding piece from the current_board's start_square
+                    images = load_pieces()  # Load piece images
+                    current_board = old  # Return current_board from representation
+
+                    start_highlight = self.san_idx(start)  # Set highlight square
+
                 if event.type == pygame.MOUSEBUTTONUP:
-                    holding = None
-                    end = selected_square
-                    if selected_square == start:
-                        end = "Nan"
+                    holding = None  # Not holding any piece anymore
+                    end = selected_square  # Set currrent square as end
+                    if selected_square == start: end = "Nan"; start = None  # Stopped holding in same place as start, this means is now a two click move, could alternatively add start = None to impede two click moves, which is more intuitive to the user
                     else:
 
                         try:
-                            if IA_PLAYS_AS:
+                            if IA_PLAYS_AS == chess.WHITE:
                                 if not white_turn:
                                     os.system("cls")
                                     promotion = ""
-                                    print(start[1], end=", ")
-                                    print(end[1])
-                                    if self.position_to_representation(current_board)[
+                                    if (position_to_representation(current_board)[
                                         (
                                                 self.san_idx(start)[0]
                                                 + self.san_idx(start)[1] * 8
                                         )
-                                    ].lower() == "p" and (
-                                            start[1],
-                                            end[1] == 7,
-                                            8 or start[1],
-                                            end[1] == 2,
-                                            1,
-                                    ):
-                                        print("tried promotion")
-                                        promotion = input(
-                                            "You will promote a pawn, [q, r, b, n]"
-                                        )
+                                    ].lower() == "p"
+                                            and ((start[1] == '7' and end[1] == '8')
+                                            or (start[1] == 2 and end[1] == 1)
+                                    )):
+                                        promotion = self.ask_promotion(promotion)
                                     current_board.push_uci(
                                         str(str(start) + str(end) + promotion)
                                     )
@@ -599,31 +685,19 @@ class Board:
                                     print(f"AI evaluation: {evaluate(current_board)}")
                                     next = 2
                                     now = time.time()
-                            else:
+                            elif IA_PLAYS_AS == chess.BLACK:
                                 if white_turn:
-                                    os.system("cls")
-                                    promotion = ""
-                                    # print(start[1], end=", ")
-                                    # print(end[1])
-                                    # print(self.position_to_representation(current_board)[self.san_idx(start)[0] + self.san_idx(start)[1]*8].lower())
-                                    # print(start[1] == '7', end[1])
-                                    # print(self.position_to_representation(current_board))
-                                    if self.position_to_representation(current_board)[
-                                        (
-                                                self.san_idx(start)[0]
-                                                + self.san_idx(start)[1] * 8
-                                        )
-                                    ].lower() == "p" and (
-                                            (start[1] == '7' and end[1] == '8')
-                                            or (start[1] == 2 and end[1] == 1)
-                                    ):
-                                        promotion = input(
-                                            "You will promote a pawn, [q, r, b, n]"
-                                        )
+                                    os.system("cls")  # Clear command prompt
+                                    promotion = ""  # Clear promotion
+                                    if (position_to_representation(current_board)[(self.san_idx(start)[0] + self.san_idx(start)[1] * 8)].lower() == "p"  # Piece to move is a pawn
+                                            and ((start[1] == '7' and end[1] == '8') or (start[1] == 2 and end[1] == 1)  # Moves from rank 7 to 8 or 2 to 1 (promotion)
+                                    )):
+                                        promotion = self.ask_promotion(promotion)  # Ask user promotion
+
                                     current_board.push_uci(
-                                        str(str(start) + str(end) + promotion)
+                                        str(str(start) + str(end) + promotion)  # Push uci with promotion
                                     )
-                                    ai_highlight = ((-1, -1), (-1, -1))
+                                    ai_highlight = ((-1, -1), (-1, -1))  # Reset highlight
                                     print(f"AI evaluation: {evaluate(current_board)}")
                                     next = 2
                                     now = time.time()
@@ -644,10 +718,10 @@ class Board:
                 white_turn = not white_turn
                 next = -1
 
-            top_lefts = self.get_top_lefts()
+            top_lefts = get_top_lefts()
 
             draw_board()
-            ixiy = self.highlight_mouse_square()
+            ixiy = highlight_mouse_square()
             if start_highlight:
                 pygame.draw.rect(
                     highlight,
@@ -685,11 +759,11 @@ class Board:
                     ),
                 )
             screen.blit(highlight, (0, 0))
-            self.draw_position(current_board)
+            draw_position(current_board)
             if holding == '.':
                 holding = None
             if holding:
-                images = self.load_pieces()
+                images = load_pieces()
                 images[holding].set_alpha(128)
                 holding_piece.blit(
                     images[holding],
@@ -727,110 +801,61 @@ class Board:
 
         pygame.quit()
 
+    def ask_promotion(self, promotion):
+        promotion = input(
+            "You will promote a pawn, [q, r, b, n]"
+        )
+        return promotion
+
+    def reset_variables(self):
+        global white_turn, ai_highlight
+        now = time.time()
+        start = None
+        end = None
+        white_turn = True
+        start_highlight = None
+        next = -1
+        ai_highlight = ((-1, -1), (-1, -1))
+        move_highlight = ai_highlight
+        holding = None
+        return end, holding, next, now, start, start_highlight
+
+    def get_displays(self):
+        global screen, highlight, holding_piece
+        screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.SRCALPHA)
+        highlight = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        holding_piece = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        pygame.display.set_caption("Board")
+
+    def get_square_dim_and_piece_size(self):
+        global square_dim, piece_size, WIDTH
+        square_dim = WIDTH / 8
+        piece_size = square_dim * 1.15
+        return square_dim, piece_size
+
+    def pygame_init(self):
+        global tick
+        # Inicialización
+        pygame.init()
+        pygame.font.init()
+        tick = 0
+
     # Definición de funciones de la clase Board
-    def load_pieces(self):
-        global square_dim
-        global piece_size
-        os.chdir(os.path.dirname(__file__))
-        images = {
-            "P": pygame.image.load("res/wp.png"),
-            "R": pygame.image.load("res/wr.png"),
-            "N": pygame.image.load("res/wn.png"),
-            "B": pygame.image.load("res/wb.png"),
-            "Q": pygame.image.load("res/wq.png"),
-            "K": pygame.image.load("res/wk.png"),
-            "p": pygame.image.load("res/p.png"),
-            "r": pygame.image.load("res/r.png"),
-            "n": pygame.image.load("res/n.png"),
-            "b": pygame.image.load("res/b.png"),
-            "q": pygame.image.load("res/q.png"),
-            "k": pygame.image.load("res/k.png"),
-        }
-        for idx, val in images.items():
-            key: pygame.surface.Surface = pygame.transform.scale(
-                val, (piece_size, piece_size)
-            )
-            images[idx] = key
-        return images
-
-    def position_to_representation(self, pos):
-        pos = str(pos)
-        pos = pos.replace(" ", "")
-        pos = pos.replace("\n", "")
-        return pos
-
-    def draw_position(self, position):
-        global square_dim
-        global screen
-        global piece_size
-        global top_lefts
-        position = self.position_to_representation(position)
-        imgs = self.load_pieces()
-        centers = []
-        top_lefts = []
-        i = -1
-        for rank in range(8):
-            for col in range(8):
-                i += 1
-                centers.append(
-                    (
-                        (i % 8 * square_dim) + square_dim / 2,
-                        (i // 8 * square_dim) + square_dim / 2,
-                    )
-                )
-                top_lefts.append(((i % 8 * square_dim), (i // 8 * square_dim)))
-        for ind, p in enumerate(position):
-            if p != ".":
-                img: pygame.surface.Surface = imgs[p]
-                screen.blit(
-                    img,
-                    (
-                        centers[ind][0] - piece_size / 2,
-                        centers[ind][1] - piece_size / 2,
-                    ),
-                )
 
     def ia_play(self):
         global white_turn
         global depth
         if IA_PLAYS_AS:
             if white_turn:
-                val = minimax(
-                    current_board, depth, -float("inf"), float("inf"), white_turn
-                )
-                if isinstance(val, int):
-                    print("Checkmate")
-                    self.reset_by_checkmate()
-                    self.load_position(chess.Board())
-                if not isinstance(val, int):
-                    self.make_move(val[1])
-                    white_turn = not white_turn
+                val = self.do_minimax()
                 return val[1]
         else:
             if not white_turn:
-                val = minimax(
-                    current_board, depth, -float("inf"), float("inf"), white_turn
-                )
-                if isinstance(val, int):
-                    print("Checkmate")
-                    self.reset_by_checkmate()
-                    self.load_position(chess.Board())
-                if not isinstance(val, int):
-                    self.make_move(val[1])
-                    white_turn = not white_turn
+                val = self.do_minimax()
                 try:
                     return val[1]
                 except TypeError:
                     return -1
-
-    def load_position(self, pos):
-        global current_board
-        current_board = pos
-
-    def change_piece_size(self, size):
-        global piece_size
-        global square_dim
-        piece_size = size * square_dim
 
     def make_move(self, move):
         if move:
@@ -839,63 +864,37 @@ class Board:
         else:
             print("Checkmate")
             self.reset_by_checkmate()
-            self.load_position(chess.Board())
+            load_position(chess.Board())
 
-
-    def highlight_mouse_square(self):
-        global top_lefts
-        global square_dim
-        global screen
-        global highlight
-        self.get_top_lefts()
-        pos = pygame.mouse.get_pos()
-        if not (pos[0] > 0 and pos[1] > 0):
-            return
-        ix = int(pos[0] // square_dim)
-        iy = int(pos[1] // square_dim * 8)
-        x = top_lefts[ix][0]
-        y = top_lefts[iy][1]
-        pygame.draw.rect(
-            highlight,
-            (255, 0, 0, 100),
-            pygame.Rect((x, y), (square_dim + 1, square_dim + 1)),
-        )
-        iy = iy // 8
-        return ix, iy
-
-    def get_top_lefts(self):
-        global top_lefts
-        top_lefts = []
-        i = -1
-        for rank in range(8):
-            for col in range(8):
-                i += 1
-                top_lefts.append(((i % 8 * square_dim), (i // 8 * square_dim)))
-        return top_lefts
-
-    def san_idx(self, input):
+    def san_idx(self, entry):
         letters = "abcdefgh"
-        if isinstance(input, str):
-            if len(input) == 2:
-                ix = ord(input[0]) - ord("a")
-                iy = (int(input[1]) * -1) + 8
+        if isinstance(entry, str):
+            if len(entry) == 2:
+                ix = ord(entry[0]) - ord("a")
+                iy = (int(entry[1]) * -1) + 8
                 return ix, iy
         else:
-            return str(f"{letters[input[0]]}{-1 * ((input[1] + 1) - 9)}")
-
-    def undo_move(self):
-        global current_board
-        global ai_highlight
-        current_board.pop()
-        current_board.pop()
-        ai_highlight = ((-1, -1), (-1, -1))
-
-    def set_depth(self, val):
-        global depth
-        depth = val
+            try:
+                return str(f"{letters[entry[0]]}{-1 * ((entry[1] + 1) - 9)}")
+            except IndexError:
+                self.running = False
 
     def reset_by_checkmate(self):
         ...
+
+    def do_minimax(self):
+        global white_turn
+        val = minimax(
+            current_board, depth, -float("inf"), float("inf"), white_turn
+        )
+        if isinstance(val, int):
+            print("Checkmate")
+            self.reset_by_checkmate()
+            load_position(chess.Board())
+        if not isinstance(val, int):
+            self.make_move(val[1])
+            white_turn = not white_turn
+        return val
 
 
 # Iniciar la aplicación
