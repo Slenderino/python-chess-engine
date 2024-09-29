@@ -50,6 +50,7 @@ style.configure("TButton", background="#2F433D", foreground="white")
 # Declares if is the first time opening the board
 first = True
 
+loaded = False
 
 def new_window(message, result_queue):
     """
@@ -127,10 +128,13 @@ def new_board_thread():
 
 
 def load_def_position():
+    global white_turn
     def_position = chess.Board()
     # def_position.set_board_fen('rnbqk3/pppp1pPp/8/8/8/8/PPPPPP1P/RNBQKBNR')
     # def_position.push_uci('g7g8q')
     load_position(def_position)
+    loaded = True
+    white_turn = True
 
 
 def pack_board_buttons():
@@ -138,6 +142,7 @@ def pack_board_buttons():
     apply_size_button.pack(side="right", padx=10)
     change_piece_size_entry.pack(side="right")
     undo_move_button.pack()
+    ai_button.pack()
 
 
 size_variable = tk.DoubleVar(value=1.15)
@@ -149,6 +154,10 @@ def apply_size():
 
 def undo_move():
     undo_move()
+
+def ai_button():
+    ai_play_move()
+    print('ai')
 
 
 # Botones de la interfaz
@@ -169,6 +178,8 @@ apply_size_button = ttk.Button(
 undo_move_button = ttk.Button(
     master=window, width=15, text="Undo Move", command=undo_move, style="TButton"
 )
+
+ai_button = ttk.Button(master=window, command=ai_button, text='AI', width=15, style="TButton")
 
 spawn_board.pack(pady=10, padx=10)
 
@@ -556,8 +567,27 @@ def draw_position(position):
             )
 
 
-class Board:
+def ai_play_move():
+    global ai_highlight
+    global current_board
+    global start_highlight
+    ai_uci = ia_play()
+    if ai_uci and ai_uci != -1:
+        ai_uci = str(ai_uci)
+        ai_1 = san_idx(ai_uci[:2])
+        ai_2 = san_idx(ai_uci[-2:])
+        # print(f'{ai_uci}: {ai_1}, {ai_2}')
+        ai_highlight = (ai_1, ai_2)
+        start_highlight = None
+        ai_uci = None
+        print(f"AI evaluation: {evaluate(current_board)}")
+    elif ai_uci == -1:
+        ai_uci = None
+        # current_board = chess.Board
+        # white_turn = True
 
+
+class Board:
     def __init__(self):
         global screen, selected_square, clock, WIDTH, HEIGHT, FPS, first, square_dim, current_board, piece_size, highlight, white_turn, ai_highlight, depth, tick, holding_piece
 
@@ -646,7 +676,7 @@ class Board:
                     else:  # There's an end and therefore this is a new click
                     """
 
-                    start_square = (self.san_idx(selected_square)[0] + self.san_idx(selected_square)[1] * 8)  # Assign start square as current square
+                    start_square = (san_idx(selected_square)[0] + san_idx(selected_square)[1] * 8)  # Assign start square as current square
 
                     old = current_board  # Backup current_board
                     current_board = position_to_representation(current_board)  # Get representation of current board
@@ -655,7 +685,7 @@ class Board:
                     images = load_pieces()  # Load piece images
                     current_board = old  # Return current_board from representation
 
-                    start_highlight = self.san_idx(start)  # Set highlight square
+                    start_highlight = san_idx(start)  # Set highlight square
 
                 if event.type == pygame.MOUSEBUTTONUP:
                     holding = None  # Not holding any piece anymore
@@ -747,23 +777,10 @@ class Board:
             screen.blit(holding_piece, (0, 0))
             if ixiy:
                 ix, iy = ixiy
-                selected_square = self.san_idx((ix, iy))
+                selected_square = san_idx((ix, iy))
             # render_text(str(white_turn), 'Consolas', 24, 'green', screen, True)
 
-            ai_uci = self.ia_play()
-            if ai_uci and ai_uci != -1:
-                ai_uci = str(ai_uci)
-                ai_1 = self.san_idx(ai_uci[:2])
-                ai_2 = self.san_idx(ai_uci[-2:])
-                # print(f'{ai_uci}: {ai_1}, {ai_2}')
-                ai_highlight = (ai_1, ai_2)
-                start_highlight = None
-                ai_uci = None
-                print(f"AI evaluation: {evaluate(current_board)}")
-            elif ai_uci == -1:
-                ai_uci = None
-                current_board = chess.Board
-                white_turn = True
+            self.ai_play_move()
 
             render_text(str(time.time() - now), 'Consolas', 34, 'green', screen)
 
@@ -771,6 +788,9 @@ class Board:
             pygame.display.flip()
 
         pygame.quit()
+
+    def ai_play_move(self):
+        ai_play_move()
 
     def push_user_move(self, current_board, end, next, now, start):
         os.system("cls")  # Clear command prompt
@@ -781,7 +801,7 @@ class Board:
 
     def push_move_with_promotion(self, current_board, end, promotion, start):
         if (position_to_representation(current_board)[
-            (self.san_idx(start)[0] + self.san_idx(start)[1] * 8)].lower() == "p"  # Piece to move is a pawn
+            (san_idx(start)[0] + san_idx(start)[1] * 8)].lower() == "p"  # Piece to move is a pawn
                 and ((start[1] == '7' and end[1] == '8') or (start[1] == 2 and end[1] == 1)
                 # Moves from rank 7 to 8 or 2 to 1 (promotion)
                 )):
@@ -838,59 +858,65 @@ class Board:
 
     # Definición de funciones de la clase Board
 
-    def ia_play(self):
-        global white_turn
-        global depth
-        if IA_PLAYS_AS == chess.WHITE:
-            if white_turn:
-                val = self.do_minimax()
-                return val[1]
-        else:
-            if not white_turn:
-                val = self.do_minimax()
-                try:
-                    return val[1]
-                except TypeError:
-                    return -1
-
-    def make_move(self, move):
-        if move:
-            global current_board
-            current_board.push_uci(str(move))
-        else:
-            print("Checkmate")
-            self.reset_by_checkmate()
-            load_position(chess.Board())
-
-    def san_idx(self, entry):
-        letters = "abcdefgh"
-        if isinstance(entry, str):
-            if len(entry) == 2:
-                ix = ord(entry[0]) - ord("a")
-                iy = (int(entry[1]) * -1) + 8
-                return ix, iy
-        else:
+def ia_play():
+    global white_turn
+    global depth
+    global current_board
+    if IA_PLAYS_AS == chess.WHITE:
+        if white_turn:
+            val = do_minimax(current_board)
+            return val[1]
+    else:
+        if not white_turn:
+            val = do_minimax(current_board)
             try:
-                return str(f"{letters[entry[0]]}{-1 * ((entry[1] + 1) - 9)}")
-            except IndexError:
-                self.running = False
+                return val[1]
+            except TypeError:
+                return -1
 
-    def reset_by_checkmate(self):
-        ...
+def make_move(move):
+    if move:
+        global current_board
+        current_board.push_uci(str(move))
+    # else:
+        # print("Checkmate from makemove")
+        # reset_by_checkmate()
+        # load_position(chess.Board())
 
-    def do_minimax(self):
-        global white_turn
-        val = minimax(
-            current_board, depth, -float("inf"), float("inf"), white_turn
-        )
-        if isinstance(val, int):
-            print("Checkmate")
-            self.reset_by_checkmate()
-            load_position(chess.Board())
-        if not isinstance(val, int):
-            self.make_move(val[1])
-            white_turn = not white_turn
-        return val
+def san_idx(entry):
+    global running
+    letters = "abcdefgh"
+    if isinstance(entry, str):
+        if len(entry) == 2:
+            ix = ord(entry[0]) - ord("a")
+            iy = (int(entry[1]) * -1) + 8
+            return ix, iy
+    else:
+        try:
+            return str(f"{letters[entry[0]]}{-1 * ((entry[1] + 1) - 9)}")
+        except IndexError:
+            running = False
+
+def reset_by_checkmate():
+    global current_board
+    ...
+
+def do_minimax(current_position):
+    global white_turn
+    # print(f'val = minimax(position=\n{current_board}\n, profundity={depth}, alpha={-float("inf")}, beta={float("inf")}, white_turn={white_turn})')
+    val = minimax(
+        current_position, depth, -float("inf"), float("inf"), white_turn
+    )
+    # print(val)
+    if isinstance(val, int):
+        print("Checkmate from do_minimax")
+        reset_by_checkmate()
+        # load_position(chess.Board())
+    if not isinstance(val, int):
+        make_move(val[1])
+        white_turn = not white_turn
+    return val
+
 
 
 # Iniciar la aplicación
