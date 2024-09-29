@@ -666,41 +666,12 @@ class Board:
                         try:
                             if IA_PLAYS_AS == chess.WHITE:
                                 if not white_turn:
-                                    os.system("cls")
-                                    promotion = ""
-                                    if (position_to_representation(current_board)[
-                                        (
-                                                self.san_idx(start)[0]
-                                                + self.san_idx(start)[1] * 8
-                                        )
-                                    ].lower() == "p"
-                                            and ((start[1] == '7' and end[1] == '8')
-                                            or (start[1] == 2 and end[1] == 1)
-                                    )):
-                                        promotion = self.ask_promotion(promotion)
-                                    current_board.push_uci(
-                                        str(str(start) + str(end) + promotion)
-                                    )
-                                    ai_highlight = ((-1, -1), (-1, -1))
+                                    next, now = self.push_user_move(current_board, end, next, now, start)
                                     print(f"AI evaluation: {evaluate(current_board)}")
-                                    next = 2
-                                    now = time.time()
                             elif IA_PLAYS_AS == chess.BLACK:
                                 if white_turn:
-                                    os.system("cls")  # Clear command prompt
-                                    promotion = ""  # Clear promotion
-                                    if (position_to_representation(current_board)[(self.san_idx(start)[0] + self.san_idx(start)[1] * 8)].lower() == "p"  # Piece to move is a pawn
-                                            and ((start[1] == '7' and end[1] == '8') or (start[1] == 2 and end[1] == 1)  # Moves from rank 7 to 8 or 2 to 1 (promotion)
-                                    )):
-                                        promotion = self.ask_promotion(promotion)  # Ask user promotion
-
-                                    current_board.push_uci(
-                                        str(str(start) + str(end) + promotion)  # Push uci with promotion
-                                    )
-                                    ai_highlight = ((-1, -1), (-1, -1))  # Reset highlight
+                                    next, now = self.push_user_move(current_board, end, next, now, start)
                                     print(f"AI evaluation: {evaluate(current_board)}")
-                                    next = 2
-                                    now = time.time()
                         except chess.IllegalMoveError:
                             print(f"Move {str(str(start) + str(end))} is illegal")
                         finally:
@@ -712,11 +683,8 @@ class Board:
             highlight.fill((0, 0, 0, 0))
             holding_piece.fill((0, 0, 0, 0))
 
-            if next > 0:
-                next -= 1
-            if next == 0:
-                white_turn = not white_turn
-                next = -1
+            if next > 0: next -= 1
+            if next == 0: white_turn = not white_turn; next = -1
 
             top_lefts = get_top_lefts()
 
@@ -800,6 +768,31 @@ class Board:
             pygame.display.flip()
 
         pygame.quit()
+
+    def push_user_move(self, current_board, end, next, now, start):
+        os.system("cls")  # Clear command prompt
+        promotion = ""  # Clear promotion
+        self.push_move_with_promotion(current_board, end, promotion, start)
+        next, now = self.reset_after_move()
+        return next, now
+
+    def push_move_with_promotion(self, current_board, end, promotion, start):
+        if (position_to_representation(current_board)[
+            (self.san_idx(start)[0] + self.san_idx(start)[1] * 8)].lower() == "p"  # Piece to move is a pawn
+                and ((start[1] == '7' and end[1] == '8') or (start[1] == 2 and end[1] == 1)
+                # Moves from rank 7 to 8 or 2 to 1 (promotion)
+                )):
+            promotion = self.ask_promotion(promotion)  # Ask user promotion
+        current_board.push_uci(
+            str(str(start) + str(end) + promotion)  # Push uci with promotion
+        )
+
+    def reset_after_move(self):
+        global ai_highlight
+        ai_highlight = ((-1, -1), (-1, -1))  # Reset highlight
+        next = 2  # Invert white_turn in 2 frames
+        now = time.time()  # Reset time
+        return next, now
 
     def ask_promotion(self, promotion):
         promotion = input(
