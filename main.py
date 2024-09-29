@@ -678,11 +678,14 @@ class Board:
                             ...
                             # print(f'send move: {str(str(start) + str(end))}')
 
-            pygame.display.set_caption(current_board.fen())
+            pygame.display.set_caption(current_board.fen())  # Set window title as current FEN
+
+            # Screens reset
             screen.fill("purple")
             highlight.fill((0, 0, 0, 0))
             holding_piece.fill((0, 0, 0, 0))
 
+            # Logic for toggling white_turn after amount of frames
             if next > 0: next -= 1
             if next == 0: white_turn = not white_turn; next = -1
 
@@ -702,7 +705,7 @@ class Board:
                         (square_dim + 1, square_dim + 1),
                     ),
                 )
-            if ai_highlight != ((-1, -1), (-1, -1)):
+            if ai_highlight != ((-1, -1), (-1, -1)):  # There is a highlight by ai
                 # start_highlight = None
                 pygame.draw.rect(
                     highlight,
@@ -727,7 +730,7 @@ class Board:
                     ),
                 )
             screen.blit(highlight, (0, 0))
-            draw_position(current_board)
+            draw_position(current_board)  # Draw pieces
             if holding == '.':
                 holding = None
             if holding:
@@ -838,7 +841,7 @@ class Board:
     def ia_play(self):
         global white_turn
         global depth
-        if IA_PLAYS_AS:
+        if IA_PLAYS_AS == chess.WHITE:
             if white_turn:
                 val = self.do_minimax()
                 return val[1]
