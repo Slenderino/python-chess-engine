@@ -2,6 +2,7 @@ import subprocess
 import sys
 import random
 import time
+import math
 
 try:
     import tkinter as tk
@@ -576,14 +577,16 @@ def ai_play_move():
     global start_highlight
     ai_uci = ia_play()
     if ai_uci and ai_uci != -1:
-        ai_uci = str(ai_uci)
-        ai_1 = san_idx(ai_uci[:2])
-        ai_2 = san_idx(ai_uci[-2:])
+        # ai_uci = str(ai_uci)
+        ai_1 = san_idx(str(ai_uci)[:2])
+        ai_2 = san_idx(str(ai_uci)[-2:])
         # print(f'{ai_uci}: {ai_1}, {ai_2}')
         ai_highlight = (ai_1, ai_2)
         start_highlight = None
+        # print(ai_uci, type(ai_uci), 'ai_play_move()')
+        write_to_log(ai_uci, current_board)
         ai_uci = None
-        print(f"AI evaluation: {evaluate(current_board)}")
+        # print(f"AI evaluation: {evaluate(current_board)}")
         if abs(evaluate(current_board)) == 1000:
             trigger_checkmate(evaluate(current_board) > 0)  # If positive pass True(chess.WHITE)
         return ai_uci
@@ -705,13 +708,15 @@ class Board:
                             if IA_PLAYS_AS == chess.WHITE:
                                 if not white_turn:
                                     next, now, move = self.push_user_move(current_board, end, next, now, start)
+                                    move = chess.Move.from_uci(move)
+                                    # print(move, type(move), 'mousebuttonup')
                                     write_to_log(move, current_board)
-                                    print(f"AI evaluation: {evaluate(current_board)}")
+                                    # print(f"AI evaluation: {evaluate(current_board)}")
                             elif IA_PLAYS_AS == chess.BLACK:
                                 if white_turn:
                                     next, now, move = self.push_user_move(current_board, end, next, now, start)
                                     write_to_log(move, current_board)
-                                    print(f"AI evaluation: {evaluate(current_board)}")
+                                    # print(f"AI evaluation: {evaluate(current_board)}")
                             if abs(evaluate(current_board)) == 1000:
                                 trigger_checkmate(evaluate(current_board) > 0)  # If positive pass True(chess.WHITE)
                         except chess.IllegalMoveError:
@@ -792,8 +797,8 @@ class Board:
                 selected_square = san_idx((ix, iy))
             # render_text(str(white_turn), 'Consolas', 24, 'green', screen, True)
 
-            ai_move = self.ai_play_move()
-            if ai_move: write_to_log(ai_move, current_board)
+            self.ai_play_move()
+
 
             if timer: render_text(str(time.time() - now), 'Consolas', 34, 'green', screen)
             if display_winning_sign: render_text(display_winning_sign, 'Cascadia Code', 85, 'gray', screen, x=10, y=HEIGHT/2-40)
@@ -940,28 +945,17 @@ def trigger_checkmate(color):
     timer == False
     display_winning_sign = f'{winner.capitalize()} has won the game!'
 
-def write_to_log(movement, current_board: chess.Board):
-    print(movement)
-    moves = []
-    for move in current_board.move_stack:
-        try:
-            moves.append(uci_to_san(move, current_board, movement))
-        except Exception:
-            moves.append(str(move))
-    pares = [' | '.join(pair) for pair in zip(*([iter(moves)] * 2))]
-
-    # Agregar el último elemento si la longitud de la lista es impar
-    if len(moves) % 2 != 0:
-        pares.append(moves[-1])
-
-    # Resultado final
-    resultado = pares
-    with open(f'games/{current_time}.txt', 'w') as f:
-        for line in resultado:
-            f.write(line + '\n')
+def write_to_log(movement: chess.Move, current_board: chess.Board):
+    with open(f'games/{current_time}.txt', 'a') as f:
+        if len(current_board.move_stack) % 2 == 1:
+            f.write(f'{math.ceil((len(current_board.move_stack)/2))}. {uci_to_san(movement, current_board, movement)} | ')
+        else:
+            f.write(uci_to_san(movement, current_board, movement) + '\n')
 
 
 def uci_to_san(uci: chess.Move, current: chess.Board, move):
+    current_board = current.copy()
+    # uci = chess.Move(uci[:2], uci[2:4], uci[4:])
 
     # Derechos de enroque
     can_castle_kingside_white = current_board.castling_rights & chess.BB_G1
@@ -970,12 +964,11 @@ def uci_to_san(uci: chess.Move, current: chess.Board, move):
     can_castle_queenside_black = current_board.castling_rights & chess.BB_C8
 
     # Enroques
-    if uci == 'e1g1' and can_castle_kingside_white: return 'O-O'
-    if uci == 'e1c1' and can_castle_queenside_white: return 'O-O-O'
-    if uci == 'e8g8' and can_castle_kingside_black: return 'O-O'
-    if uci == 'e8c8' and can_castle_queenside_black: return 'O-O-O'
+    if str(uci) == 'e1g1' and can_castle_kingside_white: return 'O-O'
+    if str(uci) == 'e1c1' and can_castle_queenside_white: return 'O-O-O'
+    if str(uci) == 'e8g8' and can_castle_kingside_black: return 'O-O'
+    if str(uci) == 'e8c8' and can_castle_queenside_black: return 'O-O-O'
 
-    current_board = current.copy()
     current_board.pop()
 
     desambiguation = 0
