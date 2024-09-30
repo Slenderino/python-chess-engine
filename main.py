@@ -130,7 +130,7 @@ def new_board_thread():
 def load_def_position():
     global white_turn
     def_position = chess.Board()
-    # def_position.set_board_fen('rnbqk3/pppp1pPp/8/8/8/8/PPPPPP1P/RNBQKBNR')
+    # def_position.set_board_fen('rnbqk3/ppppppPp/8/8/8/8/PPPPPP1P/RNBQKBNR')
     # def_position.push_uci('g7g8q')
     load_position(def_position)
     loaded = True
@@ -182,6 +182,8 @@ undo_move_button = ttk.Button(
 ai_button = ttk.Button(master=window, command=ai_button, text='AI', width=15, style="TButton")
 
 spawn_board.pack(pady=10, padx=10)
+
+current_time = time.strftime("%d-%m-%y_%H-%M")
 
 # Definición de constantes y funciones para la lógica del juego
 PAWNV = 10
@@ -268,7 +270,7 @@ KING_EG_PST = [
     -50, -30, -30, -30, -30, -30, -30, -50,
 ]
 
-IA_PLAYS_AS = chess.BLACK
+IA_PLAYS_AS = chess.WHITE
 
 
 def invert_pst(pst):
@@ -339,7 +341,8 @@ def evaluate_piece(piece, square, endgame=False, pst=True):
 def evaluate(position: chess.Board, log=False) -> float:
     global white_turn
     if position.is_checkmate():
-        if position.is_attacked_by(chess.BLACK, position.king(chess.WHITE)): return -1000
+        if position.is_attacked_by(chess.BLACK, position.king(chess.WHITE)): print('AI has found checkmate for black'); return -1000
+        print('AI has found checkmate for white')
         return 1000
     if (
         position.is_fifty_moves()
@@ -581,6 +584,9 @@ def ai_play_move():
         start_highlight = None
         ai_uci = None
         print(f"AI evaluation: {evaluate(current_board)}")
+        if abs(evaluate(current_board)) == 1000:
+            trigger_checkmate(evaluate(current_board) > 0)  # If positive pass True(chess.WHITE)
+        return ai_uci
     elif ai_uci == -1:
         ai_uci = None
         # current_board = chess.Board
@@ -589,7 +595,7 @@ def ai_play_move():
 
 class Board:
     def __init__(self):
-        global screen, selected_square, clock, WIDTH, HEIGHT, FPS, first, square_dim, current_board, piece_size, highlight, white_turn, ai_highlight, depth, tick, holding_piece
+        global screen, selected_square, clock, WIDTH, HEIGHT, FPS, first, square_dim, current_board, piece_size, highlight, white_turn, ai_highlight, depth, tick, holding_piece, display_winning_sign, timer
 
         # Initialize pygame
         self.pygame_init()
@@ -598,6 +604,8 @@ class Board:
         WIDTH, HEIGHT = 725, 725
 
         square_dim, piece_size = self.get_square_dim_and_piece_size()
+        timer = True
+        display_winning_sign = None
 
         # Fps
         FPS = 60
@@ -696,12 +704,16 @@ class Board:
                         try:
                             if IA_PLAYS_AS == chess.WHITE:
                                 if not white_turn:
-                                    next, now = self.push_user_move(current_board, end, next, now, start)
+                                    next, now, move = self.push_user_move(current_board, end, next, now, start)
+                                    write_to_log(move, current_board)
                                     print(f"AI evaluation: {evaluate(current_board)}")
                             elif IA_PLAYS_AS == chess.BLACK:
                                 if white_turn:
-                                    next, now = self.push_user_move(current_board, end, next, now, start)
+                                    next, now, move = self.push_user_move(current_board, end, next, now, start)
+                                    write_to_log(move, current_board)
                                     print(f"AI evaluation: {evaluate(current_board)}")
+                            if abs(evaluate(current_board)) == 1000:
+                                trigger_checkmate(evaluate(current_board) > 0)  # If positive pass True(chess.WHITE)
                         except chess.IllegalMoveError:
                             print(f"Move {str(str(start) + str(end))} is illegal")
                         finally:
@@ -780,9 +792,11 @@ class Board:
                 selected_square = san_idx((ix, iy))
             # render_text(str(white_turn), 'Consolas', 24, 'green', screen, True)
 
-            self.ai_play_move()
+            ai_move = self.ai_play_move()
+            if ai_move: write_to_log(ai_move, current_board)
 
-            render_text(str(time.time() - now), 'Consolas', 34, 'green', screen)
+            if timer: render_text(str(time.time() - now), 'Consolas', 34, 'green', screen)
+            if display_winning_sign: render_text(display_winning_sign, 'Cascadia Code', 85, 'gray', screen, x=10, y=HEIGHT/2-40)
 
             fps = clock.tick(FPS)
             pygame.display.flip()
@@ -790,14 +804,14 @@ class Board:
         pygame.quit()
 
     def ai_play_move(self):
-        ai_play_move()
+        return ai_play_move()
 
     def push_user_move(self, current_board, end, next, now, start):
         os.system("cls")  # Clear command prompt
         promotion = ""  # Clear promotion
-        self.push_move_with_promotion(current_board, end, promotion, start)
+        move = self.push_move_with_promotion(current_board, end, promotion, start)
         next, now = self.reset_after_move()
-        return next, now
+        return next, now, move
 
     def push_move_with_promotion(self, current_board, end, promotion, start):
         if (position_to_representation(current_board)[
@@ -809,6 +823,7 @@ class Board:
         current_board.push_uci(
             str(str(start) + str(end) + promotion)  # Push uci with promotion
         )
+        return str(str(start) + str(end) + promotion)
 
     def reset_after_move(self):
         global ai_highlight
@@ -917,7 +932,80 @@ def do_minimax(current_position):
         white_turn = not white_turn
     return val
 
+def trigger_checkmate(color):
+    global display_winning_sign
+    global timer
+    if color == chess.WHITE: winner = 'white'
+    else: winner = 'black'
+    timer == False
+    display_winning_sign = f'{winner.capitalize()} has won the game!'
+
+def write_to_log(movement, current_board: chess.Board):
+    print(movement)
+    moves = []
+    for move in current_board.move_stack:
+        try:
+            moves.append(uci_to_san(move, current_board, movement))
+        except Exception:
+            moves.append(str(move))
+    pares = [' | '.join(pair) for pair in zip(*([iter(moves)] * 2))]
+
+    # Agregar el último elemento si la longitud de la lista es impar
+    if len(moves) % 2 != 0:
+        pares.append(moves[-1])
+
+    # Resultado final
+    resultado = pares
+    with open(f'games/{current_time}.txt', 'w') as f:
+        for line in resultado:
+            f.write(line + '\n')
+
+
+def uci_to_san(uci: chess.Move, current: chess.Board, move):
+
+    # Derechos de enroque
+    can_castle_kingside_white = current_board.castling_rights & chess.BB_G1
+    can_castle_queenside_white = current_board.castling_rights & chess.BB_C1
+    can_castle_kingside_black = current_board.castling_rights & chess.BB_G8
+    can_castle_queenside_black = current_board.castling_rights & chess.BB_C8
+
+    # Enroques
+    if uci == 'e1g1' and can_castle_kingside_white: return 'O-O'
+    if uci == 'e1c1' and can_castle_queenside_white: return 'O-O-O'
+    if uci == 'e8g8' and can_castle_kingside_black: return 'O-O'
+    if uci == 'e8c8' and can_castle_queenside_black: return 'O-O-O'
+
+    current_board = current.copy()
+    current_board.pop()
+
+    desambiguation = 0
+    start_square = uci.from_square
+    end_square = uci.to_square
+    promotion = uci.promotion
+
+    # Obtiene la pieza y la pieza capturada
+    piece = current_board.piece_at(start_square)
+    captured_piece = current_board.piece_at(end_square)
+
+    # Notación del movimiento
+    end_square_name = chess.square_name(end_square)
+    promotion_suffix = f'={chess.piece_symbol(promotion).capitalize()}' if promotion else ''
+
+    # Manejo de la pieza
+    piece_symbol = piece.symbol().capitalize() if piece.piece_type != chess.PAWN else ''
+    capture_indicator = 'x' if captured_piece else ''
+
+    # Desambiguación de la notación
+    if piece_symbol == '' and capture_indicator == 'x':
+        desambiguation = 1
+    start_square_name = chess.square_name(start_square) if desambiguation == 2 else (
+        chess.square_name(start_square)[0] if desambiguation == 1 else '')
+
+    current_board.push(move)
+    return f"{piece_symbol}{start_square_name}{capture_indicator}{end_square_name}{promotion_suffix}"
+
 
 
 # Iniciar la aplicación
-window.mainloop()
+if __name__ == '__main__':
+    window.mainloop()
