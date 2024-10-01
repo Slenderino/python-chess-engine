@@ -271,7 +271,7 @@ KING_EG_PST = [
     -50, -30, -30, -30, -30, -30, -30, -50,
 ]
 
-IA_PLAYS_AS = chess.WHITE
+IA_PLAYS_AS = chess.BLACK
 
 
 def invert_pst(pst):
@@ -715,6 +715,7 @@ class Board:
                             elif IA_PLAYS_AS == chess.BLACK:
                                 if white_turn:
                                     next, now, move = self.push_user_move(current_board, end, next, now, start)
+                                    move = chess.Move.from_uci(move)
                                     write_to_log(move, current_board)
                                     # print(f"AI evaluation: {evaluate(current_board)}")
                             if abs(evaluate(current_board)) == 1000:
@@ -812,7 +813,7 @@ class Board:
         return ai_play_move()
 
     def push_user_move(self, current_board, end, next, now, start):
-        os.system("cls")  # Clear command prompt
+        # os.system("cls")  # Clear command prompt
         promotion = ""  # Clear promotion
         move = self.push_move_with_promotion(current_board, end, promotion, start)
         next, now = self.reset_after_move()
@@ -945,12 +946,47 @@ def trigger_checkmate(color):
     timer == False
     display_winning_sign = f'{winner.capitalize()} has won the game!'
 
+def convertir_diferencia(num):
+    return f"{'+' if num>=0 else ''}{round(num,2):.2f}"
+
+black_pieces = {
+    'king': '\u2654', 'queen': '\u2655', 'rook': '\u2656',
+    'bishop': '\u2657', 'knight': '\u2658', 'pawn': '\u2659'
+}
+
+white_pieces = {
+    'king': '\u265A', 'queen': '\u265B', 'rook': '\u265C',
+    'bishop': '\u265D', 'knight': '\u265E', 'pawn': '\u265F'
+}
+
+previous_evaluation: float = 0.0
 def write_to_log(movement: chess.Move, current_board: chess.Board):
+    global previous_evaluation
+
     with open(f'games/{current_time}.txt', 'a') as f:
         if len(current_board.move_stack) % 2 == 1:
             f.write(f'{math.ceil((len(current_board.move_stack)/2))}. {uci_to_san(movement, current_board, movement)} | ')
         else:
             f.write(uci_to_san(movement, current_board, movement) + '\n')
+
+    os.system("cls")
+    print(current_time)
+    print('-' * 17)
+    print(str(current_board).replace('P', white_pieces['pawn']).replace('N', white_pieces['knight']).replace('B',
+                                                                                                             white_pieces[
+                                                                                                                 'bishop']).replace(
+        'R', white_pieces['rook']).replace('Q', white_pieces['queen']).replace('K', white_pieces['king']).replace('p',
+                                                                                                                  black_pieces[
+                                                                                                                      'pawn']).replace(
+        'n', black_pieces['knight']).replace('b', black_pieces['bishop']).replace('r', black_pieces['rook']).replace(
+        'q', black_pieces['queen']).replace('k', black_pieces['king']).replace('.', '\u00B7'))
+    print('-' * 17)
+    print(
+        f'AI Current evaluation: {evaluate(current_board)} ({convertir_diferencia(evaluate(current_board) - previous_evaluation)})')
+    previous_evaluation = evaluate(current_board)
+    with open(f'games/{current_time}.txt', 'r') as f:
+        for line in f.readlines():
+            print(line, end='')
 
 
 def uci_to_san(uci: chess.Move, current: chess.Board, move):
